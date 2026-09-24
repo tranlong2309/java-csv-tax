@@ -1,0 +1,11 @@
+{
+  "csvDelimiter": ";",
+  "charset": "UTF-8",
+  "lenientMode": true,
+  "columnMapping": {
+    "itemNameHeader": ["Product"],
+    "quantityHeader": ["Qty"],
+    "unitPriceHeader": ["Price"],
+    "vatRateHeader": ["Tax Rate"]
+  }
+}

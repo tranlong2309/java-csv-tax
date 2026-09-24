@@ -86,13 +86,13 @@ Các overload nhận `File`, `Path` và `InputStream` quản lý resource bằng
 
 Các alias mặc định được hỗ trợ:
 
-| Trường | Alias tiếng Việt và tiếng Anh |
-| --- | --- |
+| Trường       | Alias tiếng Việt và tiếng Anh                                             |
+| ------------ | ------------------------------------------------------------------------- |
 | Tên mặt hàng | `mat_hang`, `ten_mat_hang`, `item_name`, `item`, `description`, `sanpham` |
-| Số lượng | `so_luong`, `quantity`, `qty`, `sl` |
-| Đơn giá | `don_gia`, `unit_price`, `price`, `gia` |
-| Thuế VAT | `phan_tram_vat`, `vat_rate`, `vat`, `thuevat`, `thue` |
-| Thành tiền | `so_tong`, `subtotal`, `thanhtien` (không bắt buộc) |
+| Số lượng     | `so_luong`, `quantity`, `qty`, `sl`                                       |
+| Đơn giá      | `don_gia`, `unit_price`, `price`, `gia`                                   |
+| Thuế VAT     | `phan_tram_vat`, `vat_rate`, `vat`, `thuevat`, `thue`                     |
+| Thành tiền   | `so_tong`, `subtotal`, `thanhtien` (không bắt buộc)                       |
 
 Việc so khớp bỏ qua khoảng trắng đầu/cuối, chữ hoa/thường, dấu tiếng Việt, dấu câu, dấu gạch dưới và UTF-8 BOM. Cột thành tiền là tùy chọn vì thư viện tự tính từ số lượng và đơn giá.
 

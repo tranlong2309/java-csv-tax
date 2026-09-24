@@ -1,0 +1,5 @@
+mat_hang,so_luong,don_gia,phan_tram_vat
+Dòng lỗi số lượng,not-a-number,100000,10
+Dòng thiếu đơn giá,2,,10
+Dòng VAT âm,1,50000,-5
+Dòng hợp lệ,1,100000,8%

@@ -1,0 +1,6 @@
+mat_hang,so_luong,don_gia,phan_tram_vat
+Ao so mi,2,100000,10
+Laptop,1,15000000,0.1
+Chuột,2,200000,8%
+Sản phẩm X,3,33333,10
+=SUM(A1:A10),1,50000,10
