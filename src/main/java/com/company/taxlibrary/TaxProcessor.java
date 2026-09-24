@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -136,7 +137,7 @@ public final class TaxProcessor {
                     numbers.quantity(),
                     numbers.unitPrice(),
                     HeaderNormalizer.parseVatRate(numbers.vatRate())));
-        } catch (RuntimeException exception) {
+        } catch (IllegalArgumentException exception) {
             if (!metadataConfig.isLenientMode()) {
                 throw new InvalidCsvFormatException("Invalid CSV row " + input.getLineNumber(), exception);
             }
@@ -191,12 +192,12 @@ public final class TaxProcessor {
             this.vatRate = vatRate;
         }
 
-        private java.math.BigDecimal quantity() {
-            return new java.math.BigDecimal(quantity);
+        private BigDecimal quantity() {
+            return new BigDecimal(quantity);
         }
 
-        private java.math.BigDecimal unitPrice() {
-            return new java.math.BigDecimal(unitPrice);
+        private BigDecimal unitPrice() {
+            return new BigDecimal(unitPrice);
         }
 
         private String vatRate() {

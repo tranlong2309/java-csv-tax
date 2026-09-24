@@ -48,7 +48,7 @@ public final class MetadataConfig {
         }
         try {
             return OBJECT_MAPPER.readValue(json, MetadataConfig.class);
-        } catch (IOException | RuntimeException exception) {
+        } catch (IOException exception) {
             throw new MetadataConfigException("Unable to parse metadata JSON", exception);
         }
     }
@@ -59,7 +59,7 @@ public final class MetadataConfig {
         }
         try {
             return OBJECT_MAPPER.readValue(reader, MetadataConfig.class);
-        } catch (IOException | RuntimeException exception) {
+        } catch (IOException exception) {
             throw new MetadataConfigException("Unable to parse metadata JSON", exception);
         }
     }
@@ -70,7 +70,7 @@ public final class MetadataConfig {
         }
         try {
             return OBJECT_MAPPER.readValue(file, MetadataConfig.class);
-        } catch (IOException | RuntimeException exception) {
+        } catch (IOException exception) {
             throw new MetadataConfigException("Unable to parse metadata JSON", exception);
         }
     }

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayInputStream;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,12 +95,12 @@ class TaxProcessorIntegrationTest {
                 assertThat(warning.getMessage()).isEqualTo("message");
 
                 TaxItemOutput output = new TaxItemOutput(
-                                7, "item", java.math.BigDecimal.ONE, java.math.BigDecimal.TEN,
-                                java.math.BigDecimal.ZERO, java.math.BigDecimal.TEN,
-                                java.math.BigDecimal.ZERO, java.math.BigDecimal.TEN, true,
+                                7, "item", BigDecimal.ONE, BigDecimal.TEN,
+                                BigDecimal.ZERO, BigDecimal.TEN,
+                                BigDecimal.ZERO, BigDecimal.TEN, true,
                                 java.util.Collections.singletonList("note"));
                 TaxSummaryReport report = new TaxSummaryReport(
-                                java.math.BigDecimal.TEN, java.math.BigDecimal.ZERO, java.math.BigDecimal.TEN,
+                                BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN,
                                 java.util.Collections.singletonList(output),
                                 java.util.Collections.singletonList(warning), 12L);
                 assertThat(report.getProcessingTimeMs()).isEqualTo(12L);
@@ -143,7 +144,7 @@ class TaxProcessorIntegrationTest {
         assertThat(empty.getValidationWarnings()).isNotEmpty();
 
         assertThatThrownBy(() -> TaxProcessor.builder().withMetadata((String) null))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(MetadataConfigException.class);
         assertThatThrownBy(() -> TaxProcessor.builder().withDelimiter(null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> TaxProcessor.builder().withDelimiter(",,"))

@@ -1,6 +1,7 @@
 package com.company.taxlibrary.util;
 
 import com.company.taxlibrary.config.MetadataConfig;
+import com.company.taxlibrary.exception.MetadataConfigException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -122,21 +123,21 @@ class HeaderNormalizerTest {
                 assertThat(defaults.getColumnMapping().getSubtotalHeader()).isNotEmpty();
                 assertThat(MetadataConfig.fromJson("{\"lenientMode\":false}").isLenientMode()).isFalse();
                 assertThatThrownBy(() -> MetadataConfig.fromJson((String) null))
-                                .isInstanceOf(RuntimeException.class);
+                                .isInstanceOf(MetadataConfigException.class);
                 assertThatThrownBy(() -> MetadataConfig.fromJson("not-json"))
-                                .isInstanceOf(RuntimeException.class);
+                                .isInstanceOf(MetadataConfigException.class);
                 assertThatThrownBy(() -> MetadataConfig.fromJson(new StringReader("not-json")))
-                        .isInstanceOf(RuntimeException.class);
+                        .isInstanceOf(MetadataConfigException.class);
                 Path invalidMetadata = tempDir.resolve("invalid-metadata.json");
                 Files.write(invalidMetadata, "not-json".getBytes(StandardCharsets.UTF_8));
                 assertThatThrownBy(() -> MetadataConfig.fromJson(invalidMetadata.toFile()))
-                        .isInstanceOf(RuntimeException.class);
+                        .isInstanceOf(MetadataConfigException.class);
                 assertThatThrownBy(() -> MetadataConfig.fromJson((StringReader) null))
-                                .isInstanceOf(RuntimeException.class);
+                                .isInstanceOf(MetadataConfigException.class);
                 assertThatThrownBy(() -> MetadataConfig.fromJson((java.io.File) null))
-                                .isInstanceOf(RuntimeException.class);
+                                .isInstanceOf(MetadataConfigException.class);
                 assertThatThrownBy(() -> MetadataConfig.fromJson((Path) null))
-                        .isInstanceOf(RuntimeException.class);
+                        .isInstanceOf(MetadataConfigException.class);
         }
 
 }

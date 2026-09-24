@@ -67,7 +67,7 @@ public final class CsvReaderEngine {
                 }
                 rowConsumer.accept(new TaxItemInput(lineNumber, values));
             }
-        } catch (IOException | RuntimeException exception) {
+        } catch (IOException | IllegalArgumentException exception) {
             if (exception instanceof InvalidCsvFormatException) {
                 throw (InvalidCsvFormatException) exception;
             }
