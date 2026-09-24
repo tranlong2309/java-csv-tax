@@ -52,7 +52,7 @@ public final class CsvReaderEngine {
             .get()) {
             List<String> headers = parser.getHeaderNames();
             Map<String, Integer> indexes = HeaderNormalizer.resolveColumnIndexes(headers, metadataConfig);
-            validateRequiredHeaders(indexes, headers, warnings);
+            validateRequiredHeaders(indexes, warnings);
 
             for (CSVRecord record : parser) {
                 int lineNumber = (int) record.getRecordNumber();
@@ -90,7 +90,6 @@ public final class CsvReaderEngine {
 
     private void validateRequiredHeaders(
             Map<String, Integer> indexes,
-            List<String> headers,
             Consumer<ValidationWarning> warnings) {
         String[] requiredFields = {HeaderNormalizer.ITEM_NAME, HeaderNormalizer.QUANTITY,
                 HeaderNormalizer.UNIT_PRICE, HeaderNormalizer.VAT_RATE};

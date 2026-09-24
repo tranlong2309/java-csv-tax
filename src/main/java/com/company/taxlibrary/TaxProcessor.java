@@ -147,7 +147,7 @@ public final class TaxProcessor {
         }
         try (StringWriter writer = new StringWriter()) {
             new CsvWriterEngine().writeEnriched(report.getItemResults(), writer, delimiter());
-            return new CsvReport(report, writer.toString());
+            return new CsvReport(writer.toString());
         } catch (IOException exception) {
             throw new InvalidCsvFormatException("Failed to generate CSV string", exception);
         }
@@ -238,7 +238,7 @@ public final class TaxProcessor {
     private static final class CsvReport {
         private final String csv;
 
-        private CsvReport(TaxSummaryReport report, String csv) {
+        private CsvReport(String csv) {
             this.csv = csv;
         }
 
