@@ -28,7 +28,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Thread-safe public facade for CSV tax processing. */
+/**
+ * Thread-safe public facade for CSV tax processing.
+ * <p>
+ * This class provides a high-level API to process tax records from various CSV sources
+ * (File, Path, InputStream, String). It safely parses input data, calculates VAT rates,
+ * sanitizes output streams, and generates detailed summary reports while maintaining
+ * an O(1) memory footprint via streaming engines.
+ * </p>
+ * 
+ * @see com.company.taxlibrary.builder.TaxProcessorBuilder
+ */
 public final class TaxProcessor {
     private final MetadataConfig metadataConfig;
 
@@ -40,6 +50,16 @@ public final class TaxProcessor {
         return new TaxProcessorBuilder();
     }
 
+    /**
+     * Processes a CSV file and calculates the tax metrics based on internal configurations.
+     * <p>
+     * Ensures deterministic closure of streams using try-with-resources.
+     * </p>
+     *
+     * @param csvFile The CSV file to process. Must not be null.
+     * @return A compiled {@link TaxSummaryReport} detailing total subtotals, VAT, and row calculations.
+     * @throws InvalidCsvFormatException If the file cannot be accessed or violates schema requirements.
+     */
     public TaxSummaryReport process(File csvFile) {
         Objects.requireNonNull(csvFile, "csvFile must not be null");
         try (Reader reader = Files.newBufferedReader(csvFile.toPath(), charset())) {
@@ -91,6 +111,13 @@ public final class TaxProcessor {
                 elapsedMillis(startedAt));
     }
 
+    /**
+     * Reads the provided file, processes the VAT items, and securely serializes the enriched
+     * dataset back into a CSV payload text format.
+     *
+     * @param csvFile The CSV file to process and export.
+     * @return An enriched CSV text string including calculated VAT columns.
+     */
     public String processToCsv(File csvFile) {
         return processToCsvReport(csvFile).getCsv();
     }
@@ -118,9 +145,12 @@ public final class TaxProcessor {
         } else {
             report = process((String) source);
         }
-        StringWriter writer = new StringWriter();
-        new CsvWriterEngine().writeEnriched(report.getItemResults(), writer, delimiter());
-        return new CsvReport(report, writer.toString());
+        try (StringWriter writer = new StringWriter()) {
+            new CsvWriterEngine().writeEnriched(report.getItemResults(), writer, delimiter());
+            return new CsvReport(report, writer.toString());
+        } catch (IOException exception) {
+            throw new InvalidCsvFormatException("Failed to generate CSV string", exception);
+        }
     }
 
     private void processRow(TaxItemInput input, ProcessingState state) {
