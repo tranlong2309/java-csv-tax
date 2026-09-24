@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataConfig",
+  "type": "object",
+  "properties": {
+    "csvDelimiter": {
+      "type": "string",
+      "default": ","
+    },
+    "charset": {
+      "type": "string",
+      "default": "UTF-8"
+    },
+    "lenientMode": {
+      "type": "boolean",
+      "default": true
+    },
+    "columnMapping": {
+      "type": "object",
+      "properties": {
+        "itemNameHeader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["mat_hang", "ten_mat_hang", "item_name", "description"]
+        },
+        "quantityHeader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["so_luong", "quantity", "qty"]
+        },
+        "unitPriceHeader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["don_gia", "unit_price", "price"]
+        },
+        "vatRateHeader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["phan_tram_vat", "vat_rate", "vat"]
+        },
+        "subtotalHeader": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["so_tong", "subtotal", "thanhtien"]
+        }
+      }
+    }
+  }
+}
