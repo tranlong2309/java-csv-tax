@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class CsvSecurityTest {
+class SecuritySanitizerTest {
     @Test
     void sanitizerHandlesNullEmptySafeAndDangerousValues() {
         assertThat(CsvSanitizer.sanitize(null)).isEmpty();
