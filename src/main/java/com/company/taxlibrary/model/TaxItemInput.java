@@ -15,6 +15,11 @@ public record TaxItemInput(
         }
     }
 
+    @Override
+    public Map<String, String> rawDataMap() {
+        return new java.util.LinkedHashMap<>(this.rawDataMap);
+    }
+
     public int getLineNumber() {
         return lineNumber();
     }

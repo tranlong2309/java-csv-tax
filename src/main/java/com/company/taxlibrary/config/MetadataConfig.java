@@ -141,23 +141,23 @@ public final class MetadataConfig {
         }
 
         public List<String> getItemNameHeader() {
-            return itemNameHeader;
+            return new ArrayList<>(itemNameHeader);
         }
 
         public List<String> getQuantityHeader() {
-            return quantityHeader;
+            return new ArrayList<>(quantityHeader);
         }
 
         public List<String> getUnitPriceHeader() {
-            return unitPriceHeader;
+            return new ArrayList<>(unitPriceHeader);
         }
 
         public List<String> getVatRateHeader() {
-            return vatRateHeader;
+            return new ArrayList<>(vatRateHeader);
         }
 
         public List<String> getSubtotalHeader() {
-            return subtotalHeader;
+            return new ArrayList<>(subtotalHeader);
         }
 
         private static List<String> aliasesOrDefault(List<String> aliases, List<String> defaults) {
