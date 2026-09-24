@@ -1,26 +1,25 @@
 package com.company.taxlibrary.model;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import org.jspecify.annotations.NonNull;
 import java.util.Map;
-import java.util.Objects;
 
-/** Raw CSV data for one input row. */
-public final class TaxItemInput {
-    private final int lineNumber;
-    private final Map<String, String> rawDataMap;
-
-    public TaxItemInput(int lineNumber, Map<String, String> rawDataMap) {
-        this.lineNumber = lineNumber;
-        this.rawDataMap = Collections.unmodifiableMap(new LinkedHashMap<>(
-                Objects.requireNonNull(rawDataMap, "rawDataMap must not be null")));
+public record TaxItemInput(
+    int lineNumber,
+    @NonNull Map<String, String> rawDataMap
+) {
+    public TaxItemInput {
+        if (rawDataMap == null) {
+            rawDataMap = java.util.Collections.emptyMap();
+        } else {
+            rawDataMap = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(rawDataMap));
+        }
     }
 
     public int getLineNumber() {
-        return lineNumber;
+        return lineNumber();
     }
 
     public Map<String, String> getRawDataMap() {
-        return rawDataMap;
+        return rawDataMap();
     }
 }
