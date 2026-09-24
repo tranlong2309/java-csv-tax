@@ -1,10 +1,34 @@
 # Shared CSV Tax Library
 
-A high-performance, streaming-based Java 17 library for parsing CSV tax records, computing exact VAT financials, mapping columns flexibly via JSON metadata, and securely generating detailed tax reports without risking memory exhaustion.
+## 📖 Giới thiệu (Introduction)
 
-## 🚀 Quick Start (5-Minute Example)
+**Shared CSV Tax Library** là một thư viện Java 17 hiệu suất cao, dựa trên cơ chế streaming (luồng) để phân tích cú pháp (parsing) các bản ghi thuế từ tệp CSV. Thư viện tính toán chính xác các khoản tài chính VAT, ánh xạ (map) các cột một cách linh hoạt thông qua siêu dữ liệu (metadata) JSON và tạo các báo cáo thuế chi tiết một cách an toàn mà không có nguy cơ gây cạn kiệt bộ nhớ.
 
-### 1. Add Maven Dependency
+Thư viện được thiết kế đặc biệt cho các hệ thống cần xử lý lượng lớn dữ liệu hóa đơn, chứng từ thuế một cách an toàn, nhanh chóng và chính xác tuyệt đối.
+
+## 🏗 Kiến trúc thư viện (Architecture)
+
+Thư viện tuân thủ nghiêm ngặt các nguyên tắc Clean Code và SOLID:
+- **`TaxProcessor` (Facade)**: Điểm truy cập công khai (public entry point) an toàn luồng (thread-safe) dành cho client.
+- **Fluent Builder**: `TaxProcessorBuilder` hỗ trợ cấu hình động trước khi khởi tạo đối tượng.
+- **`CsvReaderEngine` & `CsvWriterEngine` (Encapsulated)**: Các parser nội bộ sử dụng Apache Commons CSV để thực hiện streaming I/O mà không làm tăng dung lượng bộ nhớ.
+- **Mô hình Domain Bất biến (Immutable Domain Models)**: Tất cả các báo cáo (`TaxSummaryReport`, `TaxItemOutput`) và cấu hình (`MetadataConfig`) được bảo vệ nghiêm ngặt bằng cách sử dụng `java.lang.Record` và `Collections.unmodifiableMap()`, ngăn chặn việc sửa đổi từ bên ngoài.
+
+## 🛡 Tính năng Bảo mật (Security Features)
+
+- **Ngăn chặn Injection Công thức (Formula Injection Defense)**: Tất cả các ô CSV được tạo ra bắt đầu bằng các ký tự nguy hiểm của Excel (`=`, `+`, `-`, `@`, `\t`, `\r`) đều được vô hiệu hóa an toàn bằng cách thêm một dấu nháy đơn (`'`) vào phía trước.
+- **Chống Path Traversal**: Việc phân tích đầu vào (Input parsing) giới hạn I/O nghiêm ngặt trong các đường dẫn luồng đã được xác định.
+- **Bất biến theo mặc định (Immutability by Default)**: Các tham số Null bị chặn đứng ngay lập tức. Các ràng buộc `Map.copyOf` / unmodifiable map giúp chống lại sự can thiệp nguy hiểm xuyên luồng (cross-thread).
+
+## ⚡ Hiệu suất (Performance SLAs)
+
+- **O(1) Bộ nhớ (Constant Space)**: Dữ liệu được luân chuyển tuần tự qua Apache Commons CSV thay vì tải toàn bộ hàng triệu dòng vào RAM qua `readAllLines()`.
+- **Tối ưu hóa Garbage Collection**: `TaxCalculator` kết hợp mẫu thiết kế Flyweight Pattern để biên dịch trước các hằng số `BigDecimal` (`10.00`, `100`, `0.00`) và các biểu thức regex, giúp tiết kiệm hàng ngàn phân bổ CPU lặp đi lặp lại.
+- **Đảm bảo Độ chính xác tuyệt đối**: Tất cả các hàm toán học sử dụng `BigDecimal` với độ chính xác 16 chữ số và `RoundingMode.HALF_UP` bên trong các vòng lặp tính toán, loại bỏ hoàn toàn sai số của floating-point.
+
+## 🛠 Hướng dẫn Cài đặt (Installation Guide)
+
+Để sử dụng thư viện, bạn cần thêm dependency sau vào file `pom.xml` (Maven):
 
 ```xml
 <dependency>
@@ -14,103 +38,89 @@ A high-performance, streaming-based Java 17 library for parsing CSV tax records,
 </dependency>
 ```
 
-### 2. Run the End-to-End Code
+## 📚 Hướng dẫn Sử dụng Chi tiết (Detailed Usage Guide)
 
-Create a simple input file named `tax-input.csv`:
-```csv
-item_name, quantity, unit_price, vat_rate
-MacBook Pro, 1, 2000.00, 10%
-Mechanical Keyboard, 2, 150.00, 5%
-```
+### 1. Khởi tạo `TaxProcessor`
 
-Run the `TaxProcessor`:
+`TaxProcessor` hỗ trợ Fluent API, cho phép linh hoạt cấu hình tham số đầu vào. Thư viện hỗ trợ đọc từ nhiều nguồn: `File`, `Path`, `InputStream`, `String`, hoặc `Reader`. Tất cả các luồng tài nguyên đều sử dụng `try-with-resources` một cách tự nhiên, đảm bảo không rò rỉ bộ nhớ hoặc khóa file treo.
+
 ```java
 import com.company.taxlibrary.TaxProcessor;
+
+// Khởi tạo processor với cấu hình cơ bản (An toàn luồng & Bất biến)
+TaxProcessor processor = TaxProcessor.builder()
+        .enableLenientMode(true) // Tiếp tục xử lý ngay cả khi một dòng bị lỗi
+        .withDelimiter(";")      // Ký tự phân cách (VD: ;)
+        .build();
+```
+
+### 2. Xử lý tệp CSV và Lấy Báo cáo
+
+Sau khi khởi tạo `TaxProcessor`, bạn có thể truyền đầu vào để phân tích và tính toán thuế.
+
+```java
 import com.company.taxlibrary.model.TaxSummaryReport;
-
 import java.io.File;
+import java.nio.file.Path;
 
-public class TaxExample {
+public class TaxExecutionExample {
     public static void main(String[] args) {
-        // Build processor (Thread-Safe & Immutable)
-        TaxProcessor processor = TaxProcessor.builder()
-                .enableLenientMode(true) // Continues processing even if a row fails
-                .build();
+        TaxProcessor processor = TaxProcessor.builder().build();
         
-        // Process the CSV end-to-end
-        TaxSummaryReport report = processor.process(new File("tax-input.csv"));
+        // Cách 1: Sử dụng File
+        TaxSummaryReport report1 = processor.process(new File("tax-input.csv"));
         
-        // Print Output
-        System.out.println("Subtotal: $" + report.getGrandSubtotal());
-        System.out.println("Total VAT: $" + report.getGrandTotalVat());
-        System.out.println("Grand Total: $" + report.getGrandTotalAmount());
+        // Cách 2: Sử dụng Path
+        TaxSummaryReport report2 = processor.process(Path.of("data.csv"));
         
-        // Output detailed item rows
-        report.getItemResults().forEach(item -> {
-            System.out.println(item.getItemName() + " -> Total: $" + item.getTotalAmount());
+        // Cách 3: Sử dụng String trực tiếp
+        TaxSummaryReport report3 = processor.process("item,qty,price,vat\nLaptop,1,1000,10%");
+        
+        // Xử lý báo cáo đầu ra
+        System.out.println("Tổng cộng (Chưa VAT): $" + report1.getGrandSubtotal());
+        System.out.println("Tổng VAT: $" + report1.getGrandTotalVat());
+        System.out.println("Tổng cộng (Đã bao gồm VAT): $" + report1.getGrandTotalAmount());
+        
+        // In chi tiết từng mặt hàng
+        report1.getItemResults().forEach(item -> {
+            System.out.println("Mặt hàng: " + item.getItemName() + " | Tổng tiền: $" + item.getTotalAmount());
         });
     }
 }
 ```
 
-## 🏗 Library Architecture
+### 3. Cấu hình Ánh xạ Cột qua JSON Metadata (JSON Metadata Setup)
 
-The library rigorously adheres to Clean Code and SOLID principles:
-- **`TaxProcessor` (Facade)**: The public thread-safe entry point for clients.
-- **Fluent Builder**: `TaxProcessorBuilder` dynamically mounts configurations before instantiation.
-- **`CsvReaderEngine` & `CsvWriterEngine` (Encapsulated)**: Strictly internal parsers leveraging Apache Commons CSV for streaming I/O without memory bloat.
-- **Immutable Domain Models**: All reports (`TaxSummaryReport`, `TaxItemOutput`) and configurations (`MetadataConfig`) are heavily shielded using `java.lang.Record` and `Collections.unmodifiableMap()`, preventing external tampering.
+Nếu tiêu đề (headers) trong CSV của bạn không theo tiêu chuẩn mặc định, bạn có thể tự động ánh xạ chúng thông qua file cấu hình JSON Metadata.
 
-## 🔌 Fluent API & I/O Support
-
-The API flexibly accepts `File`, `Path`, `InputStream`, `String`, or `Reader`. All stream resources natively employ `try-with-resources` ensuring zero memory leaks or dangling file locks.
-
-```java
-TaxProcessor processor = TaxProcessor.builder()
-        .withDelimiter(";")
-        .withMetadata(new File("metadata.json"))
-        .build();
-
-// Execute using distinct inputs
-processor.process(Path.of("data.csv"));
-processor.process("item,qty,price,vat\nLaptop,1,1000,10%");
-```
-
-## 📝 JSON Metadata Setup
-
-If your CSV headers deviate from standard defaults, you can dynamically map them via a JSON Metadata Config file:
-
-**`metadata.json`**:
+Ví dụ tạo file **`metadata.json`**:
 ```json
 {
   "csvDelimiter": ",",
   "charset": "UTF-8",
   "lenientMode": true,
   "columnMapping": {
-    "itemNameHeader": ["Product", "Tên Hàng"],
+    "itemNameHeader": ["Product", "Tên Hàng", "Sản phẩm"],
     "quantityHeader": ["Qty", "Số Lượng"],
     "unitPriceHeader": ["Price", "Đơn Giá"],
-    "vatRateHeader": ["Tax", "VAT"]
+    "vatRateHeader": ["Tax", "VAT", "Thuế"]
   }
 }
 ```
-*Note: Header normalization natively strips UTF-8 BOM, trims whitespace, standardizes casing, and safely sanitizes Vietnamese diacritics.*
 
-## 🛡 Security Features
+Sử dụng metadata này khi khởi tạo processor:
+```java
+TaxProcessor processor = TaxProcessor.builder()
+        .withMetadata(new File("metadata.json"))
+        .build();
+```
+*Lưu ý: Quá trình chuẩn hóa header tự động sẽ loại bỏ UTF-8 BOM, cắt bỏ khoảng trắng (trim), chuẩn hóa chữ hoa/chữ thường và làm sạch an toàn các dấu tiếng Việt.*
 
-- **Formula Injection Defense**: All generated CSV output cells starting with dangerous Excel payloads (`=`, `+`, `-`, `@`, `\t`, `\r`) are safely neutralized by prepending a single quote (`'`).
-- **Path Traversal Shielding**: Input parsing restricts I/O strictly to defined stream paths.
-- **Immutability by Default**: Null parameters are aggressively intercepted. `Map.copyOf` / unmodifiable map constraints defend against malicious cross-thread tampering.
+## 📦 Build & Chạy Test
 
-## ⚡ Performance SLAs
-
-- **O(1) Memory Footprint (Constant Space)**: Data streams directly through Apache Commons CSV sequentially instead of loading millions of rows entirely into RAM via `readAllLines()`.
-- **Garbage Collection Optimization**: The `TaxCalculator` incorporates the Flyweight Pattern pre-compiling `BigDecimal` constants (`10.00`, `100`, `0.00`) and regex expressions, saving thousands of iterative CPU allocations.
-- **Precision Assured**: All math functions utilize 16-digit precision `RoundingMode.HALF_UP` inside calculation loops, eliminating standard floating-point drift.
-
-## 📦 Build & Test
+Để build mã nguồn và chạy toàn bộ các bài kiểm thử, sử dụng lệnh Maven sau:
 
 ```bash
 mvn clean verify
 ```
-Requires Java 17+. JaCoCo guarantees >= 95% C0 coverage, 90% C1 branch coverage across the repository structure.
+*Yêu cầu Java 17+. Thư viện sử dụng JaCoCo đảm bảo độ bao phủ mã (coverage) >= 95% C0 và 90% C1 (branch coverage) trên toàn bộ dự án.*
