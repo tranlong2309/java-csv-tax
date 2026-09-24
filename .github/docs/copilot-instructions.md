@@ -4,7 +4,7 @@ File này là baseline cho thư viện `shared-csv-tax-library`.
 
 ## Rules
 
-1. Dùng Java 11 LTS làm baseline; không dùng preview feature. Java 17+ chỉ được hỗ trợ sau khi cập nhật `pom.xml` và tài liệu. Spring Boot không cần thiết cho thư viện này và không được thêm nếu không có yêu cầu cụ thể.
+1. Dùng Java 17 LTS làm baseline; không dùng preview feature. Spring Boot không cần thiết cho thư viện này và không được thêm nếu không có yêu cầu cụ thể.
 2. Dùng `PascalCase` cho class, `camelCase` cho method/variable và `UPPER_SNAKE_CASE` cho constant.
 3. Dùng exception cụ thể theo ngữ cảnh. Không catch hoặc throw `Exception`/`RuntimeException` chung nếu có thể dùng `IllegalArgumentException`, `NumberFormatException`, `InvalidCsvFormatException`, `MetadataConfigException` hoặc `TaxProcessingException`.
 4. Ưu tiên constructor và giữ dependency/state trong field `private final` khi class có state.
