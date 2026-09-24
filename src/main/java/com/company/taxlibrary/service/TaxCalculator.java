@@ -14,8 +14,11 @@ import java.util.Objects;
 public final class TaxCalculator {
     private static final int MONEY_SCALE = 2;
     private static final int INPUT_SCALE = 4;
-    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+    private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
     private static final BigDecimal ZERO_MONEY = BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+    private static final BigDecimal RATE_010 = new BigDecimal("0.10");
+    private static final BigDecimal RATE_10 = new BigDecimal("10.00");
+    private static final java.math.MathContext MATH_CTX = new java.math.MathContext(16, RoundingMode.HALF_UP);
 
     private TaxCalculator() {
     }
@@ -40,10 +43,10 @@ public final class TaxCalculator {
                 .setScale(INPUT_SCALE, RoundingMode.HALF_UP);
         BigDecimal normalizedVatRate = normalizeVatRate(vatRate);
 
-        BigDecimal subtotal = normalizedQuantity.multiply(normalizedUnitPrice)
+        BigDecimal subtotal = normalizedQuantity.multiply(normalizedUnitPrice, MATH_CTX)
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal vatAmount = subtotal.multiply(normalizedVatRate)
-                .divide(ONE_HUNDRED, MONEY_SCALE + INPUT_SCALE, RoundingMode.HALF_UP)
+        BigDecimal vatAmount = subtotal.multiply(normalizedVatRate, MATH_CTX)
+                .divide(ONE_HUNDRED, MATH_CTX)
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal totalAmount = subtotal.add(vatAmount)
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
@@ -96,11 +99,17 @@ public final class TaxCalculator {
 
     private static BigDecimal normalizeVatRate(BigDecimal vatRate) {
         BigDecimal value = requireValue(vatRate, "vatRate");
+        if (value.signum() == 0) {
+            return ZERO_MONEY;
+        }
+        if (value.compareTo(RATE_010) == 0 || value.compareTo(RATE_10) == 0) {
+            return RATE_10;
+        }
         if (value.signum() < 0) {
             throw new IllegalArgumentException("vatRate must not be negative");
         }
-        if (value.signum() > 0 && value.compareTo(BigDecimal.ONE) < 0) {
-            value = value.multiply(ONE_HUNDRED);
+        if (value.compareTo(BigDecimal.ONE) < 0) {
+            value = value.multiply(ONE_HUNDRED, MATH_CTX);
         }
         return value.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }

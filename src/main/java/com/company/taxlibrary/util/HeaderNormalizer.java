@@ -23,6 +23,10 @@ public final class HeaderNormalizer {
 
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     private static final BigDecimal ONE = BigDecimal.ONE;
+    private static final java.util.regex.Pattern PERCENT_PATTERN = java.util.regex.Pattern.compile("[%\\s]");
+    private static final java.util.regex.Pattern DIACRITICS_PATTERN = java.util.regex.Pattern.compile("\\p{M}");
+    private static final java.util.regex.Pattern NON_ALPHANUMERIC_PATTERN = java.util.regex.Pattern.compile("[^a-z0-9]");
+    private static final java.util.regex.Pattern BOM_PATTERN = java.util.regex.Pattern.compile("^\\uFEFF");
 
     private HeaderNormalizer() {
     }
@@ -31,11 +35,11 @@ public final class HeaderNormalizer {
         if (header == null) {
             return "";
         }
-        String value = header.replace("\uFEFF", "").trim().toLowerCase(Locale.ROOT);
+        String value = BOM_PATTERN.matcher(header).replaceAll("").trim().toLowerCase(Locale.ROOT);
         value = value.replace('đ', 'd').replace('Đ', 'd');
-        value = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        return value.replaceAll("[^a-z0-9]", "");
+        value = Normalizer.normalize(value, Normalizer.Form.NFD);
+        value = DIACRITICS_PATTERN.matcher(value).replaceAll("");
+        return NON_ALPHANUMERIC_PATTERN.matcher(value).replaceAll("");
     }
 
     public static String normalizeHeader(String header) {
@@ -86,11 +90,8 @@ public final class HeaderNormalizer {
         if (rawVatRate == null || rawVatRate.trim().isEmpty()) {
             throw new IllegalArgumentException("VAT rate must not be blank");
         }
-        String value = rawVatRate.trim();
-        boolean percentage = value.endsWith("%");
-        if (percentage) {
-            value = value.substring(0, value.length() - 1).trim();
-        }
+        boolean percentage = rawVatRate.contains("%");
+        String value = PERCENT_PATTERN.matcher(rawVatRate).replaceAll("");
         try {
             BigDecimal rate = new BigDecimal(value);
             if (rate.signum() < 0) {
