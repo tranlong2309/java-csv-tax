@@ -124,3 +124,16 @@ TaxProcessor processor = TaxProcessor.builder()
 mvn clean verify
 ```
 *Yêu cầu Java 17+. Thư viện sử dụng JaCoCo đảm bảo độ bao phủ mã (coverage) >= 95% C0 và 90% C1 (branch coverage) trên toàn bộ dự án.*
+
+## 📑 Tài liệu API (JavaDocs)
+
+Bạn có thể tự động tạo và xem tài liệu API (JavaDocs) chi tiết cho toàn bộ thư viện bằng cách sử dụng file script đi kèm.
+
+```bash
+# Cấp quyền thực thi cho script (chỉ cần làm 1 lần)
+chmod +x generate_javadoc.sh
+
+# Chạy script để tạo và tự động mở JavaDocs trên trình duyệt
+./generate_javadoc.sh
+```
+*Tài liệu sau khi tạo sẽ được lưu tại `target/site/apidocs/index.html`.*
