@@ -1,0 +1,52 @@
+name: Shared Tax Library CI Quality Gates
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Gate 1 - Build & Strict Compilation
+      run: mvn clean compile -DcompilerArgument="-Xlint:all"
+
+    - name: Gate 2 - Automated Tests & Coverage (C0/C1/C2)
+      run: mvn test jacoco:report
+
+    - name: Gate 3 - Static Code Analysis (SpotBugs & PMD)
+      run: mvn spotbugs:check pmd:check
+
+    - name: Gate 4 - OWASP Dependency Security Check
+      run: mvn org.owasp:dependency-check-maven:check
+
+    - name: Gate 5 - Performance SLA Benchmark
+      run: mvn test -Dtest=PerformanceBenchmarkTest
+
+    - name: Gate 6 - Package & Generate Client Artifacts
+      run: mvn package
+
+    - name: Upload JaCoCo Coverage Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: jacoco-coverage-report
+        path: target/site/jacoco/
+
+    - name: Upload Built JAR Library
+      uses: actions/upload-artifact@v3
+      with:
+        name: java-tax-library-jar
+        path: target/*.jar
