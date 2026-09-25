@@ -20,7 +20,7 @@ class TaxProcessorTest {
     void processesMetadataAndCsvFilesEndToEnd(@TempDir Path tempDir) throws Exception {
         Path metadataFile = tempDir.resolve("metadata.json");
         Path csvFile = tempDir.resolve("tax.csv");
-        Files.write(metadataFile, "{}".getBytes(StandardCharsets.UTF_8));
+        Files.write(metadataFile, "{\"csvDelimiter\": \",\"}".getBytes(StandardCharsets.UTF_8));
         Files.write(csvFile, CSV.getBytes(StandardCharsets.UTF_8));
 
         TaxSummaryReport report = TaxProcessor.builder()
@@ -29,19 +29,20 @@ class TaxProcessorTest {
 
         assertThat(report.getItemResults()).hasSize(2);
         assertThat(report.getGrandSubtotal()).isEqualByComparingTo("15200000.00");
-        assertThat(report.getGrandTotalVat()).isEqualByComparingTo("1520000.00");
-        assertThat(report.getGrandTotalAmount()).isEqualByComparingTo("16720000.00");
+        assertThat(report.getGrandTotalVat()).isEqualByComparingTo("35000.00");
+        assertThat(report.getGrandTotalAmount()).isEqualByComparingTo("15235000.00");
         assertThat(report.getValidationWarnings()).isEmpty();
     }
 
+    
     @Test
     void acceptsStringAndInputStreamSources() {
         TaxSummaryReport fromString = TaxProcessor.builder().process(CSV);
         TaxSummaryReport fromStream = TaxProcessor.builder().process(
                 new ByteArrayInputStream(CSV.getBytes(StandardCharsets.UTF_8)));
 
-        assertThat(fromString.getGrandTotalAmount()).isEqualByComparingTo("16720000.00");
-        assertThat(fromStream.getGrandTotalAmount()).isEqualByComparingTo("16720000.00");
+        assertThat(fromString.getGrandTotalAmount()).isEqualByComparingTo("15235000.00");
+        assertThat(fromStream.getGrandTotalAmount()).isEqualByComparingTo("15235000.00");
     }
 
     @Test

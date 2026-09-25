@@ -16,6 +16,14 @@ import java.util.function.Consumer;
 public final class CsvReaderEngine {
     private final CsvColumnMappingConfig config;
 
+    
+    public CsvReaderEngine() { this(new CsvColumnMappingConfig(",", null, null, null)); }
+    public void read(Reader reader, Consumer<Map<String, String>> rowConsumer) { read(reader, rowConsumer, null); }
+    public void read(java.io.File file, Consumer<Map<String, String>> rowConsumer, Consumer<ValidationWarning> warningConsumer) {
+        try (Reader r = java.nio.file.Files.newBufferedReader(file.toPath(), java.nio.charset.Charset.forName(config.getCharset()))) {
+            read(r, rowConsumer, warningConsumer);
+        } catch (IOException e) { throw new InvalidCsvFormatException("Cannot read file", e); }
+    }
     public CsvReaderEngine(CsvColumnMappingConfig config) {
         this.config = config;
     }
@@ -26,6 +34,7 @@ public final class CsvReaderEngine {
             Consumer<ValidationWarning> warningConsumer) {
         Objects.requireNonNull(reader, "reader must not be null");
         Objects.requireNonNull(rowConsumer, "rowConsumer must not be null");
+        Consumer<ValidationWarning> warnings = warningConsumer == null ? w -> {} : warningConsumer;
 
         CSVFormat format = CSVFormat.DEFAULT.builder()
                 .setDelimiter(config.getCsvDelimiter().charAt(0))
@@ -34,14 +43,28 @@ public final class CsvReaderEngine {
                 .setSkipHeaderRecord(true)
                 .build();
 
-        try (CSVParser parser = CSVParser.builder()
-                .setReader(reader)
-                .setFormat(format)
-                .get()) {
+        try (CSVParser parser = CSVParser.parse(reader, format)) {
             
             List<String> headers = parser.getHeaderNames();
+            if (headers == null) headers = java.util.Collections.emptyList();
+            
+            if (!config.isLenientMode() && config.getColumnMapping() != null && !config.getColumnMapping().isEmpty()) {
+                for (String logicalField : config.getColumnMapping().keySet()) {
+                    if (config.resolveColumnName(logicalField, headers) == null) {
+                        throw new InvalidCsvFormatException("Missing required header for field: " + logicalField);
+                    }
+                }
+            }
             
             for (CSVRecord record : parser) {
+                if (record.size() < headers.size()) {
+                    if (!config.isLenientMode()) {
+                        throw new InvalidCsvFormatException("Row has fewer columns than header at row " + record.getRecordNumber());
+                    }
+                    warnings.accept(new ValidationWarning((int) record.getRecordNumber(), "CSV_ROW_TOO_SHORT", "Row has fewer columns than header"));
+                    continue;
+                }
+                
                 Map<String, String> rawRow = new LinkedHashMap<>();
                 if (config.getColumnMapping() != null && !config.getColumnMapping().isEmpty()) {
                     for (String logicalField : config.getColumnMapping().keySet()) {

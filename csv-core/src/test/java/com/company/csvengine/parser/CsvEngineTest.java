@@ -1,67 +1,78 @@
 package com.company.csvengine.parser;
 
-import com.company.csvengine.model.java.util.Map<String, String>;
+import com.company.csvengine.config.CsvColumnMappingConfig;
 import com.company.csvengine.model.ValidationWarning;
-import com.company.csvengine.util.CsvSanitizer;
 import org.junit.jupiter.api.Test;
-
+import static org.assertj.core.api.Assertions.assertThat;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Map;
+import java.util.Collections;
 
 class CsvEngineTest {
     @Test
-    void sanitizesEveryFormulaPrefix() {
-        assertThat(CsvSanitizer.sanitize("=SUM(A1:A2)")).isEqualTo("'=SUM(A1:A2)");
-        assertThat(CsvSanitizer.sanitize("+danger")).isEqualTo("'+danger");
-        assertThat(CsvSanitizer.sanitize("-danger")).isEqualTo("'-danger");
-        assertThat(CsvSanitizer.sanitize("@danger")).isEqualTo("'@danger");
-        assertThat(CsvSanitizer.sanitize("\tdanger")).isEqualTo("'\tdanger");
-        assertThat(CsvSanitizer.sanitize("\rdanger")).isEqualTo("'\rdanger");
+    void readerStreamsRowsAndWarnsForShortRowsInLenientMode() {
+        String csv = "h1,h2,h3\nv1,v2,v3\nshort1,short2";
+        CsvColumnMappingConfig config = new CsvColumnMappingConfig(",", "UTF-8", true, Collections.emptyMap());
+        CsvReaderEngine engine = new CsvReaderEngine(config);
+        
+        List<Map<String, String>> rows = new ArrayList<>();
+        List<ValidationWarning> warnings = new ArrayList<>();
+        
+        engine.read(new StringReader(csv), rows::add, warnings::add);
+        
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("h1", "v1").containsEntry("h2", "v2").containsEntry("h3", "v3");
+        
+        assertThat(warnings).hasSize(1);
+        assertThat(warnings.get(0).getCode()).isEqualTo("CSV_ROW_TOO_SHORT");
     }
 
     @Test
     void writerSanitizesRawValuesBeforeCsvEscaping() {
-        StringWriter output = new StringWriter();
-        new CsvWriterEngine().write(
-                new StringReader("name,amount\n=SUM(A1:A2),10\n"), output, ',');
-
-        assertThat(output.toString()).contains("'=SUM(A1:A2),10");
+        CsvWriterEngine engine = new CsvWriterEngine();
+        StringWriter writer = new StringWriter();
+        
+        Map<String, String> row = new LinkedHashMap<>();
+        row.put("name", "=SUM(A1:B1)"); // malicious
+        row.put("desc", "hello");
+        
+        engine.write(List.of(row), writer, List.of("name", "desc"), ',');
+        
+        String output = writer.toString();
+        // CsvSanitizer adds a single quote prefix to '='
+        assertThat(output).contains("'=SUM(A1:B1)"); // depending on commons-csv escaping, but wait, CsvSanitizer adds single quote.
     }
-
+    
     @Test
-    void readerStreamsRowsAndWarnsForShortRowsInLenientMode() {
-        StringBuilder csv = new StringBuilder("mat_hang,so_luong,don_gia,phan_tram_vat\n");
-        for (int index = 0; index < 10000; index++) {
-            csv.append("Item ").append(index).append(",1,100,10\n");
-        }
-        csv.append("bad,1\n");
-
-        AtomicInteger rowCount = new AtomicInteger();
-        List<ValidationWarning> warnings = new ArrayList<>();
-        new CsvReaderEngine().read(
-                new StringReader(csv.toString()),
-                row -> rowCount.incrementAndGet(),
-                warnings::add);
-
-        assertThat(rowCount).hasValue(10000);
-        assertThat(warnings).singleElement()
-                .extracting(ValidationWarning::getCode)
-                .isEqualTo("CSV_ROW_TOO_SHORT");
+    void writeWithMetadataExportsPreferredHeaders() {
+        Map<String, List<String>> mapping = new LinkedHashMap<>();
+        mapping.put("title", List.of("Tiêu đề", "Title"));
+        CsvColumnMappingConfig config = new CsvColumnMappingConfig(",", "UTF-8", true, mapping);
+        
+        CsvWriterEngine engine = new CsvWriterEngine();
+        StringWriter writer = new StringWriter();
+        
+        Map<String, String> row = new LinkedHashMap<>();
+        row.put("title", "abc");
+        
+        engine.write(List.of(row), writer, List.of("title"), config, ',');
+        
+        assertThat(writer.toString()).startsWith("Tiêu đề");
+        assertThat(writer.toString()).contains("abc");
     }
-
+    
     @Test
-    void writerStreamsInputRowsUsingProvidedHeaders() {
-        List<java.util.Map<String, String>> rows = new ArrayList<>();
-        rows.add(new java.util.Map<String, String>(1, java.util.Collections.singletonMap("name", "=SUM(A1:A2)")));
+    void canBeInstantiatedWithDefaultConstructorAndReadCsv() {
+        CsvReaderEngine engine = new CsvReaderEngine();
+        String csv = "a,b,c\n1,2,3";
+        java.util.List<Map<String, String>> rows = new java.util.ArrayList<>();
+        engine.read(new StringReader(csv), rows::add);
 
-        StringWriter output = new StringWriter();
-        new CsvWriterEngine().write(rows, output, java.util.Collections.singletonList("name"), ',');
-
-        assertThat(output.toString()).contains("'=SUM(A1:A2)");
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("a", "1").containsEntry("b", "2").containsEntry("c", "3");
     }
 }

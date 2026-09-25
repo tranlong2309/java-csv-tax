@@ -1,5 +1,5 @@
 package com.company.csvengine.config;
-import com.company.csvengine.exception.MetadataConfigException;
+import com.company.csvengine.exception.CsvColumnMappingConfigException;
 import com.company.csvengine.util.HeaderNormalizer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,26 +25,37 @@ public final class CsvColumnMappingConfig {
             @JsonProperty("charset") String charset,
             @JsonProperty("lenientMode") Boolean lenientMode,
             @JsonProperty("columnMapping") Map<String, List<String>> columnMapping) {
-        this.csvDelimiter = defaultIfNullOrBlank(csvDelimiter, ",");
+        if (csvDelimiter == null || csvDelimiter.length() != 1) {
+            throw new IllegalArgumentException("csvDelimiter must be exactly 1 character");
+        }
+        this.csvDelimiter = csvDelimiter;
         this.charset = defaultIfNullOrBlank(charset, "UTF-8");
         this.lenientMode = lenientMode == null || lenientMode;
         this.columnMapping = columnMapping == null ? Collections.emptyMap() : columnMapping;
     }
 
     public static CsvColumnMappingConfig fromJson(String json) {
-        if (json == null) throw new MetadataConfigException("Metadata JSON must not be null");
+        if (json == null) throw new CsvColumnMappingConfigException("Metadata JSON must not be null");
         try { return OBJECT_MAPPER.readValue(json, CsvColumnMappingConfig.class); }
-        catch (IOException e) { throw new MetadataConfigException("Unable to parse metadata", e); }
+        catch (IOException e) { throw new CsvColumnMappingConfigException("Unable to parse metadata", e); }
     }
 
     public static CsvColumnMappingConfig fromJson(Reader reader) {
         try { return OBJECT_MAPPER.readValue(reader, CsvColumnMappingConfig.class); }
-        catch (IOException e) { throw new MetadataConfigException("Unable to parse metadata", e); }
+        catch (IOException e) { throw new CsvColumnMappingConfigException("Unable to parse metadata", e); }
     }
 
+    
+    public static CsvColumnMappingConfig fromJson(Path path) { return fromJson(path.toFile()); }
     public static CsvColumnMappingConfig fromJson(File file) {
         try { return OBJECT_MAPPER.readValue(file, CsvColumnMappingConfig.class); }
-        catch (IOException e) { throw new MetadataConfigException("Unable to parse metadata JSON", e); }
+        catch (IOException e) { throw new CsvColumnMappingConfigException("Unable to parse metadata JSON", e); }
+    }
+
+    
+    public String getPreferredHeader(String logicalField) {
+        List<String> aliases = columnMapping.get(logicalField);
+        return (aliases == null || aliases.isEmpty()) ? logicalField : aliases.get(0);
     }
 
     public String getCsvDelimiter() { return csvDelimiter; }

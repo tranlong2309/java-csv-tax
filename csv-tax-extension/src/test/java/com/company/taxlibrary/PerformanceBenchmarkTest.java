@@ -7,11 +7,12 @@ import java.nio.file.Files;
 
 public class PerformanceBenchmarkTest {
 
+    
     @Test
     void testPerformanceIsWithinSla() throws Exception {
         File tempFile = File.createTempFile("perf-", ".csv");
         tempFile.deleteOnExit();
-        Files.writeString(tempFile.toPath(), "Item,Qty,Price,Tax\nTest,1,100,10%");
+        Files.writeString(tempFile.toPath(), "mat_hang,so_luong,don_gia,phan_tram_vat\nTest,1,100,10%");
         
         long start = System.currentTimeMillis();
         TaxProcessor processor = TaxProcessor.builder().build();

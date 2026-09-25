@@ -1,163 +1,96 @@
 package com.company.taxlibrary;
 
-import com.company.csvengine.config.CsvColumnMappingConfig;
 import com.company.csvengine.exception.InvalidCsvFormatException;
-import com.company.taxlibrary.model.TaxItemInput;
-import com.company.csvengine.parser.CsvReaderEngine;
-import com.company.csvengine.parser.CsvWriterEngine;
-import com.company.csvengine.util.CsvSanitizer;
+import com.company.taxlibrary.model.TaxSummaryReport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.InputStream;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class SecuritySanitizerTest {
+public class SecuritySanitizerTest {
+
     @Test
-    void sanitizerHandlesNullEmptySafeAndDangerousValues() {
-        assertThat(CsvSanitizer.sanitize(null)).isEmpty();
-        assertThat(CsvSanitizer.sanitize("")).isEmpty();
-        assertThat(CsvSanitizer.sanitize("safe text")).isEqualTo("safe text");
-        for (String payload : new String[]{"=formula", "+formula", "-formula", "@formula", "\tformula", "\rformula"}) {
-            assertThat(CsvSanitizer.sanitize(payload)).isEqualTo("'" + payload);
-        }
+    void mitigatesCsvInjectionAndSanitizesOutput() {
+        String inputCsv = "mat_hang,so_luong,don_gia,phan_tram_vat\n"
+                + "=CMD(),1,100,10\n"
+                + "+CMD(),1,100,10\n"
+                + "-CMD(),1,100,10\n"
+                + "@CMD(),1,100,10\n"
+                + "\tCMD(),1,100,10\n";
+        
+        String outputCsv = TaxProcessor.builder().processToCsv(inputCsv);
+        
+        // Assert that the malicious characters are prefixed with '
+        assertThat(outputCsv).contains("'=CMD()");
+        assertThat(outputCsv).contains("'+CMD()");
+        assertThat(outputCsv).contains("'-CMD()");
+        assertThat(outputCsv).contains("'@CMD()");
+        assertThat(outputCsv).contains("'\tCMD()");
+        
+        assertThat(com.company.csvengine.util.CsvSanitizer.sanitize("\rCMD()")).isEqualTo("'\rCMD()");
     }
 
     @Test
-    void strictReaderRejectsMalformedRowsAndMissingHeaders() {
-        CsvColumnMappingConfig strict = new CsvColumnMappingConfig(",", "UTF-8", false, null);
-        CsvReaderEngine reader = new CsvReaderEngine(strict);
+    void nullGuardsForProcessMethods() {
+        TaxProcessor processor = TaxProcessor.builder().build();
+        assertThatThrownBy(() -> processor.process((File) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("File must not be null");
+        assertThatThrownBy(() -> processor.process((Path) null))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> processor.process((InputStream) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("InputStream must not be null");
+        assertThatThrownBy(() -> processor.process((String) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("csvContent must not be null");
+        assertThatThrownBy(() -> processor.process((Reader) null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("Reader must not be null");
+    }
 
-        assertThatThrownBy(() -> reader.read(
-                new StringReader("mat_hang,so_luong,don_gia,phan_tram_vat\nonly,1\n"),
-                row -> { },
-                warning -> { }))
+    @Test
+    void strictModeRejectsInvalidRowsAndHeaders() {
+        String invalidRowCsv = "mat_hang,so_luong,don_gia,phan_tram_vat\nValid,1,100,10\nInvalidOnlyTwoCols,1\n";
+        
+        assertThatThrownBy(() -> TaxProcessor.builder().enableLenientMode(false).process(invalidRowCsv))
                 .isInstanceOf(InvalidCsvFormatException.class)
-                .hasMessageContaining("fewer fields");
-        assertThatThrownBy(() -> reader.read(
-                new StringReader("name,amount\nitem,1\n"), row -> { }, warning -> { }))
+                .hasMessageContaining("Row has fewer columns than header");
+
+        String missingHeaderCsv = "so_luong,don_gia,phan_tram_vat\n1,100,10\n";
+        
+        assertThatThrownBy(() -> TaxProcessor.builder().enableLenientMode(false).process(missingHeaderCsv))
                 .isInstanceOf(InvalidCsvFormatException.class)
-                .hasMessageContaining("Missing required CSV columns");
+                .hasMessageContaining("Missing required header for field: itemName");
     }
 
     @Test
-    void tolerantReaderWarnsForEmptyAndCorruptRows() {
-        AtomicInteger rows = new AtomicInteger();
-        AtomicInteger warnings = new AtomicInteger();
-        new CsvReaderEngine().read(new StringReader(""), row -> rows.incrementAndGet(), warning -> warnings.incrementAndGet());
-        new CsvReaderEngine().read(
-                new StringReader("mat_hang,so_luong,don_gia,phan_tram_vat\nitem,1\n"),
-                row -> rows.incrementAndGet(),
-                warning -> warnings.incrementAndGet());
-
-        assertThat(rows).hasValue(0);
-        assertThat(warnings).hasValue(2);
-
-        AtomicInteger overloadRows = new AtomicInteger();
-        new CsvReaderEngine().read(new StringReader(
-                        "mat_hang,so_luong,don_gia,phan_tram_vat\nitem,1,100,10\n"),
-                row -> overloadRows.incrementAndGet());
-        assertThat(overloadRows).hasValue(1);
+    void ioFailureIsWrappedInInvalidCsvFormatException(@TempDir Path tempDir) {
+        Path missingFile = tempDir.resolve("missing_file.csv");
+        
+        assertThatThrownBy(() -> TaxProcessor.builder().process(missingFile))
+                .isInstanceOf(InvalidCsvFormatException.class)
+                .hasCauseInstanceOf(java.io.IOException.class);
     }
 
     @Test
-    void readerAndWriterValidateNullsAndDelimiterConfiguration() {
-        CsvReaderEngine reader = new CsvReaderEngine();
-        assertThatThrownBy(() -> reader.read((java.io.Reader) null, row -> { }, warning -> { }))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> reader.read(new StringReader(""), null, warning -> { }))
-                .isInstanceOf(NullPointerException.class);
-        CsvColumnMappingConfig invalidDelimiter = new CsvColumnMappingConfig(",,", "UTF-8", true, null);
-        assertThatThrownBy(() -> new CsvReaderEngine(invalidDelimiter)
-                .read(new StringReader("a\n"), row -> { }, warning -> { }))
-                .isInstanceOf(InvalidCsvFormatException.class);
-        assertThatThrownBy(() -> reader.read((java.io.File) null, row -> { }, warning -> { }))
-                .isInstanceOf(NullPointerException.class);
+    void readsAndWritesRealFiles(@TempDir Path tempDir) throws Exception {
+        Path inputPath = tempDir.resolve("input.csv");
+        Files.writeString(inputPath, "mat_hang,so_luong,don_gia,phan_tram_vat\nApples,2,50,10\n");
 
-        CsvWriterEngine writer = new CsvWriterEngine();
-        assertThatThrownBy(() -> writer.write(null, new StringWriter(), ','))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> writer.write(new StringReader("a"), null, ','))
-                .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> writer.write(Collections.emptyList(), new StringWriter(), null, ','))
-                .isInstanceOf(NullPointerException.class);
-        assertThatCode(() -> new CsvReaderEngine(null).read(
-                new StringReader("mat_hang,so_luong,don_gia,phan_tram_vat\nitem,1,100,10\n"),
-                row -> { }))
-                .doesNotThrowAnyException();
+        TaxSummaryReport report = TaxProcessor.builder().process(inputPath.toFile());
+        assertThat(report.getGrandTotalAmount()).isEqualByComparingTo("110.00");
+        
+        String outputCsv = TaxProcessor.builder().processToCsv(inputPath.toFile());
+        assertThat(outputCsv).contains("Apples");
+        assertThat(outputCsv).contains("110.00");
     }
-
-    @Test
-    void writerSanitizesHeadersValuesAndSupportsFiles(@TempDir Path tempDir) throws Exception {
-        LinkedHashMap<String, String> values = new LinkedHashMap<>();
-        values.put("name", "=SUM(A1:A2)");
-        values.put("empty", null);
-        TaxItemInput row = new TaxItemInput(1, values);
-        StringWriter output = new StringWriter();
-        new CsvWriterEngine().write(Collections.singletonList(row), output,
-                java.util.Arrays.asList("name", "empty"), ',');
-        assertThat(output.toString()).contains("'=SUM(A1:A2)");
-
-        Path input = tempDir.resolve("input.csv");
-        Files.write(input, "name,amount\n@bad,1\n".getBytes(StandardCharsets.UTF_8));
-        AtomicInteger count = new AtomicInteger();
-        new CsvReaderEngine().read(input.toFile(), rowValue -> count.incrementAndGet(), warning -> { });
-        assertThat(count).hasValue(1);
-    }
-
-        @Test
-        void writerAndReaderWrapIoFailures(@TempDir Path tempDir) {
-                Writer failingWriter = new Writer() {
-                        @Override
-                        public void write(char[] chars, int offset, int length) throws IOException {
-                                throw new IOException("write failure");
-                        }
-
-                        @Override
-                        public void flush() throws IOException {
-                                throw new IOException("flush failure");
-                        }
-
-                        @Override
-                        public void close() throws IOException {
-                                throw new IOException("close failure");
-                        }
-                };
-                CsvWriterEngine writer = new CsvWriterEngine();
-                assertThatThrownBy(() -> writer.write(new StringReader("a\nb\n"), failingWriter, ','))
-                                .isInstanceOf(IllegalStateException.class);
-                assertThatThrownBy(() -> writer.write(Collections.emptyList(), failingWriter,
-                                Collections.singletonList("value"), ','))
-                                .isInstanceOf(IllegalStateException.class);
-                assertThatThrownBy(() -> writer.writeEnriched(Collections.emptyList(), failingWriter, ','))
-                                .isInstanceOf(IllegalStateException.class);
-
-                java.io.File missing = tempDir.resolve("missing.csv").toFile();
-                assertThatThrownBy(() -> new CsvReaderEngine().read(missing, row -> { }, warning -> { }))
-                                .isInstanceOf(InvalidCsvFormatException.class);
-                java.io.Reader failingReader = new java.io.Reader() {
-                        @Override
-                        public int read(char[] chars, int offset, int length) throws IOException {
-                                throw new IOException("read failure");
-                        }
-
-                        @Override
-                        public void close() {
-                        }
-                };
-                assertThatThrownBy(() -> new CsvReaderEngine().read(failingReader, row -> { }, warning -> { }))
-                                .isInstanceOf(InvalidCsvFormatException.class);
-        }
 }

@@ -1,6 +1,7 @@
 package com.company.taxlibrary.model;
 
 import org.jspecify.annotations.NonNull;
+import com.company.csvengine.model.ValidationWarning;
 import java.math.BigDecimal;
 import java.util.List;
 

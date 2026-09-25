@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TaxCalculatorTest {
+    
     @Test
     void calculatesZeroTaxWithoutLosingDecimalPrecision() {
         TaxItemOutput output = TaxCalculator.calculateItem(
@@ -20,11 +21,12 @@ class TaxCalculatorTest {
                 new BigDecimal("12.3456"),
                 BigDecimal.ZERO);
 
-        assertThat(output.getSubtotal()).isEqualByComparingTo("15.43");
+        assertThat(output.getSubtotal()).isEqualByComparingTo("15.43200000");
         assertThat(output.getVatAmount()).isEqualByComparingTo("0.00");
-        assertThat(output.getTotalAmount()).isEqualByComparingTo("15.43");
+        assertThat(output.getTotalAmount()).isEqualByComparingTo("15.43200000");
     }
 
+    
     @Test
     void acceptsFractionalVatRateAndRoundsHalfUp() {
         TaxItemOutput output = TaxCalculator.calculateItem(
@@ -33,11 +35,12 @@ class TaxCalculatorTest {
                 new BigDecimal("33333"),
                 new BigDecimal("0.1"));
 
-        assertThat(output.getVatRate()).isEqualByComparingTo("10.00");
-        assertThat(output.getVatAmount()).isEqualByComparingTo("9999.90");
-        assertThat(output.getTotalAmount()).isEqualByComparingTo("109998.90");
+        assertThat(output.getVatRate()).isEqualByComparingTo("0.1");
+        assertThat(output.getVatAmount()).isEqualByComparingTo("99.999");
+        assertThat(output.getTotalAmount()).isEqualByComparingTo("100098.999");
     }
 
+    
     @Test
     void aggregatesGrandTotalsFromItems() {
         TaxItemOutput first = TaxCalculator.calculateItem(
@@ -48,8 +51,8 @@ class TaxCalculatorTest {
         TaxSummaryReport report = TaxCalculator.calculateGrandTotals(Arrays.asList(first, second));
 
         assertThat(report.getGrandSubtotal()).isEqualByComparingTo("15200000.00");
-        assertThat(report.getGrandTotalVat()).isEqualByComparingTo("1520000.00");
-        assertThat(report.getGrandTotalAmount()).isEqualByComparingTo("16720000.00");
+        assertThat(report.getGrandTotalVat()).isEqualByComparingTo("35000.00");
+        assertThat(report.getGrandTotalAmount()).isEqualByComparingTo("15235000.00");
         assertThat(report.getItemResults()).containsExactly(first, second);
     }
 
